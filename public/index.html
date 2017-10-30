@@ -1,0 +1,271 @@
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <script src="jquery.min.js"></script>
+    <script type="text/javascript" src="bootstrap.min.js"></script>
+	  <link href="bootstrap.css" rel="stylesheet">
+    <script type="text/javascript" src="./require.js"></script>
+
+    <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA-m24h4mwgeSkMpaQenjQNiPeAK5VLWjk&sensor=false"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caller</title>
+</head>
+
+<style type="text/css">
+  .hiddenfad{
+    position: absolute;
+    width: 80%;
+    top: 9%;
+    left: 10%;
+    display: none;
+  }
+</style>
+<body>
+    <header class="header">
+        <!-- <h1 class="header__title">Weather PWA</h1> -->
+    </header>
+    <main class="main">
+            <div class="jumbotron">
+			  <div class="container">
+			  	<div class="col-md-3 col-sm-3 col-xs-3 col-md-offset-5 col-xs-offset-5 col-sm-offset-5">
+			  		<img src="image/small.png" width="70%" class="pull-left" />
+			  	</div>
+			  	<div class="col-md-12 col-xs-12">
+			  		<h1>Caller - <label id="owner_id"></label> 編號</h1>
+					  <p>目前編號：<label id="current_id">1</label></p>
+					  <p>剩餘時間：<label id="last_time">5</label> min</p>
+					  <p>回去所需時間：<label id="goback_time"></label> </p>
+					  <p>距離：<label id="distance"></label> </p>
+					  <p>門診更新時間：<label class="date"></label></p>
+			  	</div>
+			  	</div>
+			  </div>
+			</div>
+			<div class="container-fluid">
+				<div class="form-group">
+				  <label class="control-label" for="count">編號</label>
+				  <input type="text" class="form-control" id="count" placeholder="number">
+				</div>
+				<div class="form-group">
+				  <button class="form-control btn-primary" id="subscribe">submit</button>
+				</div>
+				<div class="form-group">
+				  <button class="form-control btn-info" id="cancel">Cancel Reminder</button>
+				</div>
+			</div>
+      <div class="alert alert-dismissible alert-success hiddenfad">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        <strong></strong>
+      </div>
+      <div class="alert alert-dismissible alert-danger hiddenfad">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        <strong></strong>
+      </div>
+      <div class="alert alert-dismissible alert-info hiddenfad">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        <strong></strong>
+      </div>
+    </main>
+    <div class="dialog-container">
+    </div>
+    <div class="loader">
+        <svg viewBox="0 0 32 32" width="32" height="32">
+            <circle id="spinner" cx="16" cy="16" r="14" fill="none"></circle>
+        </svg>
+    </div>
+    <!-- Insert link to app.js here -->
+<script type="text/javascript">
+
+var subscribe = document.getElementById("subscribe");
+var count = document.getElementById("count");
+var timer=""
+var goback_time_value=""
+var isSubscribe=false
+const applicationServerPublicKey = `BFFF-P8m2NW_jd__N_Zw4wzCzMxKLLgA2A7o8G5vcwk14kaOtyj5IaNOGNLysvZjDpatlpE1dSgjLUfdUS5E9E8`;
+var owner_id=""
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+    .then(reg => {
+      // registration worked
+      console.log('[Service Worker] Registration succeeded. Scope is ' + reg.scope);
+      initializeUI(reg);
+
+      if ('Notification' in window) {
+        console.log('Notification permission default status:', Notification.permission);
+          Notification.requestPermission(function (status) {
+            console.log('Notification permission status:', status);
+            displayNotification()
+          });
+          navigator.serviceWorker.addEventListener('message', event => {
+            console.log(event.data.msg);
+          });
+      }
+      console.log('[Service Worker] register end');
+    }).catch(error => {
+      // registration failed
+      console.log('[Service Worker] Registration failed with ' + error);
+    });
+}
+function displayNotification() {
+  if (Notification.permission == 'granted') {
+    navigator.serviceWorker.getRegistration().then(reg => {
+      // reg.showNotification('線上 Angular 讀書會 活動', options);
+      console.log('displayNotification');
+    });
+  }
+}
+
+function urlB64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+function subscribeUser(swRegistration) {
+  const applicationServerKey = urlB64ToUint8Array(applicationServerPublicKey);
+  swRegistration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: applicationServerKey
+    })
+    .then(subscription => {
+      console.log('User is subscribed');
+      console.log(JSON.stringify(subscription));
+    })
+    .catch(err => {
+      console.log('Failed to subscribe the user: ', err);
+    });
+}
+
+function unsubscribeUser(swRegistration) {
+  swRegistration.pushManager.getSubscription()
+  .then(function(subscription) {
+    if (subscription) {
+      return subscription.unsubscribe();
+    }
+  })
+  .catch(function(error) {
+    console.log('Error unsubscribing', error);
+  })
+  .then(function() {
+    console.log('User is unsubscribed.');
+  });
+}
+
+function initializeUI(swRegistration){
+  subscribe.addEventListener('click', function() {
+    if(count.value && !isNaN(count.value)){
+      isSubscribe=true
+      $("#owner_id").text(count.value)
+      messageAlert("success","open reminder")
+      subscribeUser(swRegistration);
+      getGoogleMapAPI(swRegistration)
+      getJson(swRegistration)
+      // timer=setInterval(function(){ getGoogleMapAPI() }, 120000);
+      // timer=setInterval(function(){ getGoogleMapAPI() }, 120000);
+    }else{
+      messageAlert("danger","please input integer")
+    }
+  });
+  cancel.addEventListener('click', function() {
+    if(isSubscribe)
+      unsubscribeUser(swRegistration);
+      messageAlert("info","close reminder")
+      clearData()
+  });
+}
+function getJson(reg){
+  var url = 'https://hackthon-c4508.firebaseapp.com/api.json';
+    if ('caches' in window) {
+      console.log("[Get Data] getting position from caches...");
+      caches.match(url).then(function(response) {
+        if (response) {
+          response.json().then(function(json) {
+            var date=new Date()
+            $(".date").html(date.getHours()+":"+date.getMinutes()+":"+date.getSeconds())
+            // Only update if the XHR is still pending, otherwise the XHR
+            // has already returned and provided the latest data.
+            updateUI(json,reg)
+            return;
+          });
+        }
+      });
+    }
+}
+
+function updateUI(json,reg){
+    owner= parseInt($("#owner_id").text())
+    owner=isNaN(owner)?0:owner
+    current=parseInt(json.current_id)
+    $("#current_id").text(json.current_id)
+    time= goback_time_value - parseInt($("#last_time").text())*60
+    if(!isNaN(goback_time_value)){
+       if(time <= 300)
+        reg.showNotification('Time is up', {body:"Appointment time is up"});
+    }
+   
+    if((owner-current)*5<=0)
+      $("#last_time").text(0)
+    else
+      $("#last_time").text((owner-current)*5)
+}
+function clearData(){
+  $("#owner_id").text("")
+  $("#current_id").text("")
+  $("#last_time").text("")
+  $("#goback_time").text("")
+  $("#distance").text("")
+}
+
+function getGoogleMapAPI(swRegistration){
+  navigator.geolocation.getCurrentPosition(function(position){
+    var date=new Date()
+    $(".date").html(date.getHours()+":"+date.getMinutes()+":"+date.getSeconds())
+    var latitude  = position.coords.latitude;
+    var longitude = position.coords.longitude;
+    var origin1 = new google.maps.LatLng(latitude, longitude);
+    var destinationB = new google.maps.LatLng(24.068176,120.700916);
+
+    var service = new google.maps.DistanceMatrixService();
+    service.getDistanceMatrix(
+      {
+        origins: [origin1],
+        destinations: [destinationB],
+        travelMode: 'WALKING',
+        unitSystem: google.maps.UnitSystem.METRIC,
+      }, function callback(response, status) {
+        current_id= parseInt($("#current_id").text()) 
+        goback_time_value=response.rows[0].elements[0].duration.value
+        updateUI({"current_id":current_id},swRegistration)
+        $("#distance").text(response.rows[0].elements[0].distance.text)
+        $("#goback_time").text(response.rows[0].elements[0].duration.text)
+      });
+  },function(){
+      messageAlert("danger","can not found your location. please check browser config")
+  });
+}
+
+function messageAlert(type, data){
+  $(".alert-"+type+" strong").text(data)
+  $(".alert-"+type).fadeTo(2000, 500).slideUp(500, function(){
+          $(".alert-"+type).slideUp(500);
+  });
+}
+// https://web-push-codelab.glitch.me/
+// firebase API可不可以被動處理
+// push number and API 處理判斷要不要更新
+// serviceWork 抓local 位置 then push to API API 處理判斷要不要更新
+
+</script>
+</body>
+</html>
