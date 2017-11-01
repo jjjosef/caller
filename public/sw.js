@@ -39,30 +39,30 @@ self.addEventListener('activate',  event => {
 
 
 // when the browser fetches a url
-self.addEventListener('fetch', function(e) {
-  console.log('[Service Worker] Fetch', e.request.url);
-  var dataUrl = 'https://hackthon-c4508.firebaseapp.com/api.json';
+// self.addEventListener('fetch', function(e) {
+//   console.log('[Service Worker] Fetch', e.request.url);
+//   var dataUrl = 'https://hackthon-c4508.firebaseapp.com/api.json';
   
-  // either respond with the cached object or go ahead and fetch the actual url
-  if (e.request.url.indexOf(dataUrl) === 0) {
-    e.respondWith(
-      fetch(e.request)
-        .then(function(response) {
-          return caches.open(dataCacheName).then(function(cache) {
-            cache.put(e.request.url, response.clone());
-            console.log('[Service Worker] Fetched&Cached Data');
-            return response;
-          });
-        })
-    );
-  } else {
-    e.respondWith(
-      caches.match(e.request).then(function(response) {
-        return response || fetch(e.request);
-      })
-    );
-  }
-});
+//   // either respond with the cached object or go ahead and fetch the actual url
+//   if (e.request.url.indexOf(dataUrl) === 0) {
+//     e.respondWith(
+//       fetch(e.request)
+//         .then(function(response) {
+//           return caches.open(dataCacheName).then(function(cache) {
+//             cache.put(e.request.url, response.clone());
+//             console.log('[Service Worker] Fetched&Cached Data');
+//             return response;
+//           });
+//         })
+//     );
+//   } else {
+//     e.respondWith(
+//       caches.match(e.request).then(function(response) {
+//         return response || fetch(e.request);
+//       })
+//     );
+//   }
+// });
 
 self.addEventListener('notificationclick', event => {
   const notification = event.notification;
@@ -110,8 +110,5 @@ self.addEventListener('push', function(event) {
   
   
 });
-
-self.addEventListener('message', event=>{
-})
 
 
