@@ -2,14 +2,17 @@
 
 <head>
     <meta charset="utf-8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <script src="jquery.min.js"></script>
     <script type="text/javascript" src="bootstrap.min.js"></script>
     <link href="bootstrap.css" rel="stylesheet">
     <script type="text/javascript" src="./require.js"></script>
+
     <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA-m24h4mwgeSkMpaQenjQNiPeAK5VLWjk&sensor=false"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Caller</title>
+    <link rel="manifest" href="manifest.json">
 </head>
 <style type="text/css">
 .hiddenfad {
@@ -111,7 +114,8 @@
                     $(".switchOff").css('display', 'none')
                     $(".switchOn").css('display', 'block')
                     console.log('[Service Worker] Registration succeeded. Scope is ' + reg.scope);
-                    subscribeUser(swRegistration);
+                    initSubmit(reg)
+                    subscribeUser(reg);
                     messageAlert("success", "open reminder")
                     if ('Notification' in window) {
                         console.log('Notification permission default status:', Notification.permission);
@@ -119,10 +123,13 @@
                             console.log('Notification permission status:', status);
                             displayNotification()
                         });
-                        navigator.serviceWorker.addEventListener('message', event => {
-                            console.log(event.data.msg);
-                        });
                     }
+                    // 接收訊息
+                    // navigator.serviceWorker.addEventListener('message', function (event) {
+                    //     if (e.data === 'sw.update') {
+                    //         // 此处可以操作页面的 DOM 元素啦
+                    //     }
+                    // });
                     console.log('[Service Worker] register end');
                 }
             }).catch(error => {
@@ -130,9 +137,14 @@
                 console.log('[Service Worker] Registration failed with ' + error);
             });
     }
-
+    function initSubmit(navigator){
+      subscribe.addEventListener('click', function() {
+            navigator.serviceWorker.controller && navigator.serviceWorker.controller.postMessage(count.value);
+        });
+    }
     function getPath() {
-        return window.location.pathname;
+      path=window.location.pathname.split('/')
+      return path;
     }
 
     function displayNotification() {
@@ -190,7 +202,7 @@
     }
 
     function initializeUI(swRegistration) {
-        $("#owner_id").text(getPath())
+        $("#owner_id").text(getPath()[1])
         getGoogleMapAPIAndUpdateUI()
         cancel.addEventListener('click', function() {
             if (isSubscribe)
@@ -262,7 +274,7 @@
             }, function callback(response, status) {
                 current_id = parseInt($("#current_id").text())
                 goback_time_value = response.rows[0].elements[0].duration.value
-                updateUI({ "current_id": current_id })
+                updateUI({ "current_id": getPath()[2] })
                 $("#distance").text(response.rows[0].elements[0].distance.text)
                 $("#goback_time").text(response.rows[0].elements[0].duration.text)
             });
@@ -277,6 +289,7 @@
             $(".alert-" + type).slideUp(500);
         });
     }
+
     // https://web-push-codelab.glitch.me/
     // firebase API可不可以被動處理
     // push number and API 處理判斷要不要更新
